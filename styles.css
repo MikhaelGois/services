@@ -179,6 +179,52 @@ h1 {
   font-size: 1rem;
 }
 
+.boot-devotional {
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.55s ease, transform 0.55s ease;
+  pointer-events: none;
+}
+
+.boot-devotional--visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.boot-devotional-sep {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 0.9rem 0 0.75rem;
+  opacity: 0.45;
+}
+
+.boot-devotional-label {
+  margin: 0 0 0.4rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  font-family: var(--font-body);
+}
+
+.boot-devotional-verse {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: clamp(1.1rem, 3.2vw, 1.35rem);
+  color: var(--secondary);
+  line-height: 1.45;
+  quotes: none;
+}
+
+.boot-devotional-message {
+  margin: 0.5rem 0 0;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  opacity: 0.88;
+}
+
 .hero-lead {
   margin: 0;
   font-size: 0.96rem;

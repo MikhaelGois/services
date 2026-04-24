@@ -70,6 +70,29 @@ const BOOT_LINES = {
   default: "C:\\SERVICOS\\MIKHAEL> inicializando",
 };
 
+const DEVOTIONAL_ITEMS = [
+  {
+    verse: "\"O Senhor é o meu pastor; nada me faltará.\" — Salmos 23:1",
+    message: "Mesmo em dias corridos, Deus continua cuidando de cada detalhe da sua vida. Confie e siga em paz.",
+  },
+  {
+    verse: "\"Posso todas as coisas naquele que me fortalece.\" — Filipenses 4:13",
+    message: "A força que você precisa hoje não vem só de você. Deus renova seu ânimo para continuar.",
+  },
+  {
+    verse: "\"Entrega o teu caminho ao Senhor; confia nele, e ele tudo fará.\" — Salmos 37:5",
+    message: "Entregue seus planos ao Senhor e avance com fé. Ele abre portas no tempo certo.",
+  },
+  {
+    verse: "\"Porque sou eu que conheço os planos que tenho para vocês, diz o Senhor.\" — Jeremias 29:11",
+    message: "Mesmo quando você não entende o processo, Deus já está preparando um futuro de esperança.",
+  },
+  {
+    verse: "\"Lancem sobre ele toda a sua ansiedade, porque ele tem cuidado de vocês.\" — 1 Pedro 5:7",
+    message: "Leve sua preocupação a Deus em oração. O coração descansa quando confia no cuidado dEle.",
+  },
+];
+
 function buildMailtoLink(serviceKey) {
   const data = SERVICE_MESSAGES[serviceKey];
   const params = new URLSearchParams({
@@ -223,14 +246,43 @@ function getCurrentSection() {
   return document.body.dataset.section || "default";
 }
 
-function createBootOverlay({ bootText, loadingLabel }) {
+function getDevotionalItem() {
+  const lastIndexRaw = localStorage.getItem("last-devotional-index");
+  const lastIndex = Number.parseInt(lastIndexRaw ?? "-1", 10);
+
+  let nextIndex = Math.floor(Math.random() * DEVOTIONAL_ITEMS.length);
+  if (DEVOTIONAL_ITEMS.length > 1 && nextIndex === lastIndex) {
+    nextIndex = (nextIndex + 1) % DEVOTIONAL_ITEMS.length;
+  }
+
+  localStorage.setItem("last-devotional-index", String(nextIndex));
+  return DEVOTIONAL_ITEMS[nextIndex];
+}
+
+/* Estima tempo de leitura em ms com base nos caracteres do verso + mensagem.
+   ~35ms/char → 100 chars ≈ 3,5 s | 180 chars ≈ 6,3 s | limites: 3 s–8 s */
+function calcReadMs(verse, message) {
+  const total = (verse + " " + message).length;
+  return Math.max(3000, Math.min(8000, total * 35));
+}
+
+function createBootOverlay({ bootText, loadingLabel, devotional = null }) {
   const overlay = document.createElement("div");
   overlay.className = "boot-overlay";
+  const devotionalHtml = devotional
+    ? `<div class="boot-devotional">
+        <hr class="boot-devotional-sep" aria-hidden="true" />
+        <p class="boot-devotional-label">VERSÍCULO DO ACESSO</p>
+        <blockquote class="boot-devotional-verse">${devotional.verse}</blockquote>
+        <p class="boot-devotional-message">${devotional.message}</p>
+      </div>`
+    : "";
   overlay.innerHTML = `
     <div class="boot-terminal" role="status" aria-live="polite">
       <p class="boot-typed"></p>
       <div class="boot-loading"><span class="boot-loading-label">${loadingLabel}</span> <span class="boot-percent">0%</span></div>
       <div class="boot-bar"><div class="boot-fill"></div></div>
+      ${devotionalHtml}
     </div>
   `;
 
@@ -270,18 +322,33 @@ function runBootSequence() {
   const bootText = BOOT_LINES[section] || BOOT_LINES.default;
   const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const profile = BOOT_PROFILES[section] || BOOT_PROFILES.default;
+  const DEVOTIONAL_SESSION_KEY = "devotional-shown";
+  const isFirstHubVisit = section === "hub" && !sessionStorage.getItem(DEVOTIONAL_SESSION_KEY);
+  if (isFirstHubVisit) sessionStorage.setItem(DEVOTIONAL_SESSION_KEY, "1");
+  const devotional = isFirstHubVisit ? getDevotionalItem() : null;
   const { overlay, typedEl, percentEl, fillEl } = createBootOverlay({
     bootText,
     loadingLabel: profile.loading,
+    devotional,
   });
 
   document.body.appendChild(overlay);
 
   const finish = () => {
-    overlay.classList.add("boot-overlay--done");
-    window.setTimeout(() => {
-      overlay.remove();
-    }, 380);
+    const devotionalEl = overlay.querySelector(".boot-devotional");
+    if (devotionalEl) {
+      devotionalEl.classList.add("boot-devotional--visible");
+      const verseText = devotionalEl.querySelector(".boot-devotional-verse")?.textContent ?? "";
+      const msgText = devotionalEl.querySelector(".boot-devotional-message")?.textContent ?? "";
+      const readMs = prefersReducedMotion ? 0 : calcReadMs(verseText, msgText);
+      window.setTimeout(() => {
+        overlay.classList.add("boot-overlay--done");
+        window.setTimeout(() => overlay.remove(), 380);
+      }, readMs);
+    } else {
+      overlay.classList.add("boot-overlay--done");
+      window.setTimeout(() => overlay.remove(), 380);
+    }
   };
 
   const runLoading = () => {
